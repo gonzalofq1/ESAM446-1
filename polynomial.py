@@ -144,7 +144,7 @@ class RationalPolynomial():
         s4 = sympy.Poly.from_list(list(other.denominator.coff),x)
         pol1 = s1/s2
         pol2 = s3/s4
-        pol = pol1-pol2
+        pol = (s1*s4-s3*s2)/(s2*s4)
         pol = sympy.simplify(pol)
         pol = str(pol)
         s3 = pol.split(("/"))
