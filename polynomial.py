@@ -103,7 +103,7 @@ class RationalPolynomial():
         s1 = sympy.Poly.from_list(list(self.numerator.coff),x)
         s2 = sympy.Poly.from_list(list(self.denominator.coff),x)
         s3 = s1/s2
-        s3 = sympy.simplify(s3)
+        s3 = sympy.cancel(s3)
         s3 = str(s3)
         s3 = s3.split(("/"))
         if len(s3)==1:
