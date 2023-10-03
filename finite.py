@@ -33,9 +33,10 @@ class DifferenceUniformGrid(Difference):
         self.convergence_order = convergence_order
         self.stencil_type = stencil_type
         self.axis = axis
-        
+        m = derivative_order
+        n = convergence_order
 
-        r = m+1-1+n
+        r = m+n
         p = (r-1)/2
         S = np.zeros((r,r))
         ps = np.linspace(-p,p,r)
@@ -45,7 +46,30 @@ class DifferenceUniformGrid(Difference):
         for i in range(shape[0]):
             for j in range(shape[1]):
                 S[i,j]=(ps[j]*h)**i/np.math.factorial(i)
-        self.stencil = S
+        
+        b = np.zeros((r,1))
+        b[m]=1
+ 
+
+        a = np.linalg.inv(S) @ b 
+        
+        offsets = ps.astype(int)
+        print(offsets)
+        shape = [grid.size,grid.size]
+        print(a)
+        D = sparse.diags(a, offsets=offsets, shape=shape)
+        D = D.tocsr()
+        for j in range(int((r-1)/2)):
+            for i in range(int((r-1)/2)-j):
+                D[j,i-int((r-1)/2)+j]=a[i]
+            
+        for j in range((int((r-1)/2))):
+            for i in range((int((r-1)/2))-j):
+                D[-1-j,i]=a[int((r-1)/2)+1+i+j]
+        
+        self.matrix = D
+        
+
 
 
 class DifferenceNonUniformGrid(Difference):
@@ -57,4 +81,3 @@ class DifferenceNonUniformGrid(Difference):
         self.stencil_type = stencil_type
         self.axis = axis
         pass
-
