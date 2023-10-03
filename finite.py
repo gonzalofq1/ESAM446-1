@@ -61,13 +61,9 @@ class DifferenceUniformGrid(Difference):
         for j in range(int((r-1)/2)):
             for i in range(int((r-1)/2)-j):
                 D[j,i-int((r-1)/2)+j]=a[i]
-            
-        for j in range((int((r-1)/2))):
-            for i in range((int((r-1)/2))-j):
                 D[-1-j,i]=a[int((r-1)/2)+1+i+j]
         
         self.matrix = D
-        print(np.shape(D))
 
 
 
