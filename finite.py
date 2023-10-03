@@ -41,7 +41,7 @@ class DifferenceUniformGrid(Difference):
         S = np.zeros((r,r))
         ps = np.linspace(-p,p,r)
         rows = np.linspace(0,2*p,r)
-        h=(grid[-1]-grid[0])/grid.size
+        h=grid.dx
         shape  = np.shape(S)
         for i in range(shape[0]):
             for j in range(shape[1]):
@@ -54,9 +54,8 @@ class DifferenceUniformGrid(Difference):
         a = np.linalg.inv(S) @ b 
         
         offsets = ps.astype(int)
-        print(offsets)
-        shape = [grid.size,grid.size]
-        print(a)
+     
+        shape = [int(grid.N),int(grid.N)]
         D = sparse.diags(a, offsets=offsets, shape=shape)
         D = D.tocsr()
         for j in range(int((r-1)/2)):
@@ -68,7 +67,7 @@ class DifferenceUniformGrid(Difference):
                 D[-1-j,i]=a[int((r-1)/2)+1+i+j]
         
         self.matrix = D
-        
+        print(np.shape(D))
 
 
 
