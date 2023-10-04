@@ -64,6 +64,7 @@ class DifferenceUniformGrid(Difference):
                 D[-1-j,i]=a[int((r-1)/2)+1+i+j]
         
         self.matrix = D
+        print(a)
 
 
 
@@ -75,4 +76,44 @@ class DifferenceNonUniformGrid(Difference):
         self.convergence_order = convergence_order
         self.stencil_type = stencil_type
         self.axis = axis
-        pass
+        
+        gr = grid.values
+        m = derivative_order
+        n = convergence_order
+        r = int((m+1)/2)*2-1+n
+        p = int((r-1)/2)
+        
+        S = np.zeros((r,r))
+        rows = np.linspace(0,2*p,r)
+        ps = np.linspace(-p,p,r)
+        shape  = np.shape(S)
+        b = np.zeros((r,1))
+        b[m]=1
+        dev = np.zeros((gr.size,gr.size))
+
+        
+        for current in range(gr.size):
+            dist = np.zeros(r)
+            
+            for i,w in enumerate(ps.astype(int)):
+                if current+w<0:
+                    dist[i] = -gr[current]+gr[(current+w)]-grid.length
+                    
+                elif current+w>=grid.N:
+                    cur = (current+w)%(grid.N)
+                    dist[i] = -gr[current]+gr[cur]+grid.length
+                else:
+                    dist[i] = -gr[current]+gr[(current+w)]
+            
+            for i in range(shape[0]):
+                for j in range(shape[1]):
+                    S[i,j]=(dist[j])**i/np.math.factorial(i)
+
+            a = np.linalg.inv(S) @ b 
+            for i in range(ps.size):
+                if current+int(ps[i])>=grid.N:
+                    dev[current,(current+int(ps[i]))%grid.N] = a[i]
+                else:
+                    dev[current,current+int(ps[i])] = a[i]
+        
+        self.matrix = dev
