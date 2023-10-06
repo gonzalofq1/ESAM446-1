@@ -35,3 +35,6 @@ jobs:
       if: always()
       run: |
         pytest hw1_tests2.py
+      if: always()
+      run: |
+        pytest hw2_test1.py
