@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import factorial
 from scipy import sparse
-
+#
 class UniformPeriodicGrid:
 
     def __init__(self, N, length):
