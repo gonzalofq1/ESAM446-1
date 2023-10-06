@@ -36,7 +36,7 @@ class DifferenceUniformGrid(Difference):
         m = derivative_order
         n = convergence_order
 
-        r = int((m+1)/2)*2-1+n
+        r = n+m
         p = (r-1)/2
         S = np.zeros((r,r))
         ps = np.linspace(-p,p,r)
