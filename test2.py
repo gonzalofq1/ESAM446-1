@@ -96,7 +96,7 @@ def test_RK_3_4(resolution):
     f = lambda u: d @ u
 
     steps = 3
-    alpha = 0.4
+    alpha = 0.25
     ts = timesteppers.AdamsBashforth(IC, f, steps, alpha*grid.dx**(4/3))
 
 
@@ -122,7 +122,7 @@ def test_RK_4_2(resolution):
     f = lambda u: d @ u
     
     steps = 4
-    alpha = 0.4
+    alpha = 0.25
     ts = timesteppers.AdamsBashforth(IC, f, steps, alpha*grid.dx**(4/3))
 
 
@@ -148,7 +148,7 @@ def test_RK_4_4(resolution):
     f = lambda u: d @ u
 
     steps = 4
-    alpha = 0.4
+    alpha = 0.25
     ts = timesteppers.AdamsBashforth(IC, f, steps, alpha*grid.dx**(4/3))
 
 
