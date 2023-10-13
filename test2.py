@@ -44,7 +44,7 @@ def test_RK_2_4(resolution):
     f = lambda u: d @ u
 
     steps = 2
-    alpha = 0.4
+    alpha = 0.25
     
     ts = timesteppers.AdamsBashforth(IC, f, steps, alpha*grid.dx**(4/3))
 
