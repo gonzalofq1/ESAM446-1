@@ -25,7 +25,7 @@ def test_RK_2_2(resolution):
     
     ts = timesteppers.Multistage(IC, f, stages, a, b)
 
-    alpha = 0.5
+    alpha = 0.25
     num_periods = 1.8
     ts.evolve(alpha*grid.dx, 2*np.pi*num_periods)
 
@@ -82,7 +82,7 @@ def test_RK_3_2(resolution):
 
     ts = timesteppers.Multistage(IC, f, stages, a, b)
 
-    alpha = 0.5
+    alpha = 0.25
     num_periods = 1.8
     ts.evolve(alpha*grid.dx, 2*np.pi*num_periods)
 
@@ -141,7 +141,7 @@ def test_RK_4_2(resolution):
     
     ts = timesteppers.Multistage(IC, f, stages, a, b)
 
-    alpha = 0.5
+    alpha = 0.25
     num_periods = 1.8
     ts.evolve(alpha*grid.dx, 2*np.pi*num_periods)
 
@@ -171,7 +171,7 @@ def test_RK_4_4(resolution):
 
     ts = timesteppers.Multistage(IC, f, stages, a, b)
 
-    alpha = 0.5
+    alpha = 0.25
     num_periods = 1.2
     ts.evolve(alpha*grid.dx, 2*np.pi*num_periods)
 
