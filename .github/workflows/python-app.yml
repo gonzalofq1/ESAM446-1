@@ -38,4 +38,4 @@ jobs:
     - name: Test script with pytest
       if: always()
       run: |
-        pytest hw4_tests1.py
+        pytest hw4_test1.py
