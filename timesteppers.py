@@ -1,4 +1,6 @@
 import numpy as np
+from scipy import sparse
+import scipy.sparse.linalg as spla
 
 class Timestepper:
 
@@ -120,9 +122,6 @@ class AdamsBashforth(ExplicitTimestepper):
             return next
 
 
-
-
-
     @staticmethod
     def coeff(steps):
         k = np.zeros((steps,steps))
@@ -136,4 +135,66 @@ class AdamsBashforth(ExplicitTimestepper):
         return x
 
 
+class ImplicitTimestepper(Timestepper):
+    def __init__(self, u, L):
+        super().__init__()
+        self.u = u
+        self.L = L
+        N = len(u)
+        self.I = sparse.eye(N, N)
+        
+class BackwardDifferentiationFormula(ImplicitTimestepper):
+    def __init__(self, u, L, steps):
+        super().__init__(u, L)
+        self.steps = steps
+        self.svalue = 1
+    def _step(self, dt):
+        if (self.svalue == 1):
+            self.deltas = np.vstack([dt,])
+            self.memory = np.vstack([np.transpose(self.u),])
+            self.LHS = self.I - dt*self.L.matrix
+            self.LU = spla.splu(self.LHS.tocsc(), permc_spec='NATURAL')
+            new = self.LU.solve(self.u)
+            self.svalue = self.svalue+1
+            return new.flatten()
 
+        elif (self.svalue<=self.steps):
+
+            self.deltas = self.deltas+dt
+            self.deltas = np.vstack([dt,self.deltas])
+            self.memory = np.vstack([np.transpose(self.u),self.memory])
+            coffs = self.coeffs(self.svalue,self.deltas)
+            self.LHS =  self.I*np.sum(coffs) + (self.L.matrix)
+            self.LU = spla.splu(self.LHS.tocsc(), permc_spec='NATURAL')
+
+            U = np.matmul(np.transpose(coffs),self.memory) 
+            new = self.LU.solve(np.transpose(U))
+            self.svalue = self.svalue+1
+            return new.flatten()
+        
+        
+        else:
+            self.deltas = self.deltas+dt
+            self.deltas = np.vstack([dt,self.deltas[0:-1,:]])
+            self.memory = np.vstack([np.transpose(self.u),self.memory[0:-1,:]])
+            coffs = self.coeffs(self.steps,self.deltas)
+            self.LHS = self.I*np.sum(coffs) + (self.L.matrix)
+            self.LU = spla.splu(self.LHS.tocsc(), permc_spec='NATURAL')
+            U = np.matmul(np.transpose(coffs),self.memory) 
+
+            new = self.LU.solve(np.transpose(U))
+            return new.flatten()
+        
+    
+    @staticmethod
+    def coeffs(steps,deltas):
+
+        k = np.zeros((steps,steps))
+        b = np.zeros((steps,1))
+        b[0,0]=1
+        rows,cols = np.shape(k)
+        for i in range(rows):
+            for j in range(cols):
+                k[i,j] = (-1)**(i+1)*(deltas[j,0])**(i+1)/np.math.factorial(i+1)
+        x = np.linalg.solve(k,b)
+        return x
