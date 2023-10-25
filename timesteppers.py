@@ -171,6 +171,7 @@ class BackwardDifferentiationFormula(ImplicitTimestepper):
             new = self.LU.solve(np.transpose(U))
             self.svalue = self.svalue+1
             return new.flatten()
+            
         
         
         else:
@@ -198,3 +199,160 @@ class BackwardDifferentiationFormula(ImplicitTimestepper):
                 k[i,j] = (-1)**(i+1)*(deltas[j,0])**(i+1)/np.math.factorial(i+1)
         x = np.linalg.solve(k,b)
         return x
+    
+class StateVector:
+    
+    def __init__(self, variables):
+        var0 = variables[0]
+        self.N = len(var0)
+        size = self.N*len(variables)
+        self.data = np.zeros(size)
+        self.variables = variables
+        self.gather()
+
+    def gather(self):
+        for i, var in enumerate(self.variables):
+            np.copyto(self.data[i*self.N:(i+1)*self.N], var)
+
+    def scatter(self):
+        for i, var in enumerate(self.variables):
+            np.copyto(var, self.data[i*self.N:(i+1)*self.N])
+
+
+class IMEXTimestepper(Timestepper):
+
+    def __init__(self, eq_set):
+        super().__init__()
+        self.X = eq_set.X
+        self.M = eq_set.M
+        self.L = eq_set.L
+        self.F = eq_set.F
+
+    def step(self, dt):
+        self.X.data = self._step(dt)
+        self.X.scatter()
+        self.dt = dt
+        self.t += dt
+        self.iter += 1
+
+
+class Euler(IMEXTimestepper):
+
+    def _step(self, dt):
+        if dt != self.dt:
+            LHS = self.M + dt*self.L
+            self.LU = spla.splu(LHS.tocsc(), permc_spec='NATURAL')
+        
+        RHS = self.M @ self.X.data + dt*self.F(self.X)
+        return self.LU.solve(RHS)
+
+
+class CNAB(IMEXTimestepper):
+
+    def _step(self, dt):
+        if self.iter == 0:
+            # Euler
+            LHS = self.M + dt*self.L
+            LU = spla.splu(LHS.tocsc(), permc_spec='NATURAL')
+            self.FX = self.F(self.X)
+            RHS = self.M @ self.X.data + dt*self.FX
+            self.FX_old = self.FX
+            return LU.solve(RHS)
+        else:
+            if dt != self.dt or self.iter == 1:
+                LHS = self.M + dt/2*self.L
+                self.LU = spla.splu(LHS.tocsc(), permc_spec='NATURAL')
+
+            self.FX = self.F(self.X)
+            RHS = self.M @ self.X.data - 0.5*dt*self.L @ self.X.data + 3/2*dt*self.FX - 1/2*dt*self.FX_old
+            self.FX_old = self.FX
+            return self.LU.solve(RHS)
+
+
+class BDFExtrapolate(IMEXTimestepper):
+
+    def __init__(self, eq_set, steps):
+        super().__init__(eq_set)
+        self.steps = steps
+        self.svalue = 1
+
+    def _step(self, dt):
+        if self.svalue == 1:
+            # Euler
+            LHS = self.M + dt*self.L
+            LU = spla.splu(LHS.tocsc(), permc_spec='NATURAL')
+            self.FX = self.F(self.X)
+            RHS = self.M @ self.X.data + dt*self.FX
+
+            self.memoryFX = np.copy(self.FX)
+            self.memory = np.copy(self.X.data)
+            self.deltas = np.vstack([dt,])
+            self.svalue = self.svalue+1
+            
+            return LU.solve(RHS)
+        
+        elif (self.svalue<=self.steps):
+
+    
+            self.FX = self.F(self.X)
+            self.memoryFX = np.column_stack((self.FX,self.memoryFX))
+            self.memory = np.column_stack((self.X.data,self.memory))
+            self.deltas = self.deltas+dt
+            self.deltas = np.vstack([dt,self.deltas])
+            coffsEXT = self.coeffEXT(self.svalue)
+            coffsBDF = self.coeffBDF(self.svalue,self.deltas)
+            F =  self.memoryFX @ coffsEXT
+            U =  self.memory @ coffsBDF
+        
+            
+            self.LHS = -self.M*np.sum(coffsBDF) + (self.L)
+            self.RHS = -self.M @ U + F
+            self.LU = spla.splu(self.LHS.tocsc(), permc_spec='NATURAL')
+            self.svalue = self.svalue+1
+            print(coffsEXT)
+            return self.LU.solve(self.RHS).flatten()
+        
+        else:
+            self.FX = self.F(self.X)
+            self.deltas = self.deltas+dt
+            self.deltas = np.vstack([dt,self.deltas[0:-1,:]])
+            self.memory = np.column_stack((self.X.data,self.memory[:,0:-1]))
+            self.memoryFX = np.column_stack((self.FX,self.memoryFX[:,0:-1]))
+            coffsEXT = self.coeffEXT(self.steps)
+            coffsBDF = self.coeffBDF(self.steps,self.deltas)
+            F =  self.memoryFX @ coffsEXT
+            U =  self.memory @ coffsBDF
+            self.LHS = -self.M*np.sum(coffsBDF) + (self.L)
+            self.RHS = -self.M @ U + F
+            self.LU = spla.splu(self.LHS.tocsc(), permc_spec='NATURAL')
+            return self.LU.solve(self.RHS).flatten()
+
+
+
+
+    @staticmethod
+    def coeffEXT(steps):
+
+        k = np.zeros((steps,steps))
+        b = np.zeros((steps,1))
+        b[0,0]=1
+        rows,cols = np.shape(k)
+        for i in range(rows):
+            for j in range(cols):
+                k[i,j] = (-1)**(i)*(j+1)**(i)/np.math.factorial(i)
+        x = np.linalg.solve(k,b)
+        return x
+    
+    @staticmethod
+    def coeffBDF(steps,deltas):
+
+        k = np.zeros((steps,steps))
+        b = np.zeros((steps,1))
+        b[0,0]=1
+        rows,cols = np.shape(k)
+        for i in range(rows):
+            for j in range(cols):
+                k[i,j] = (-1)**(i+1)*(deltas[j,0])**(i+1)/np.math.factorial(i+1)
+        x = np.linalg.solve(k,b)
+        return x
+
