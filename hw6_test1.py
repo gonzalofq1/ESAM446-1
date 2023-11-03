@@ -33,7 +33,6 @@ def test_reaction_diffusion(resolution, alpha):
     error = np.max(np.abs(solution - c))
 
     error_est = error_RD[(resolution,alpha)]
-    print(error)
 
     assert error < error_est
 
