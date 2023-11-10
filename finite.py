@@ -41,6 +41,17 @@ class NonUniformPeriodicGrid:
         return dx
 
 
+class UniformNonPeriodicGrid:
+
+    def __init__(self, N, interval):
+        """ Non-uniform grid; no grid points at the endpoints of the interval"""
+        self.start = interval[0]
+        self.end = interval[1]
+        self.dx = (self.end - self.start)/(N-1)
+        self.N = N
+        self.values = np.linspace(self.start, self.end, N, endpoint=True)
+
+
 class Domain:
 
     def __init__(self, grids):
@@ -121,16 +132,46 @@ class DifferenceUniformGrid(Difference):
         matrix = sparse.diags(self.stencil, self.j, shape=shape)
         matrix = matrix.tocsr()
         jmin = -np.min(self.j)
+        print(self.j)
         if jmin > 0:
             for i in range(jmin):
-                matrix[i,-jmin+i:] = self.stencil[:jmin-i]
-
+                if isinstance(grid, UniformNonPeriodicGrid):
+                    matrix[i,:]=0 
+                    matrix[i,0:len(self.j)] = self.coffs(self.convergence_order,self.derivative_order,i)/(self.dx)**self.derivative_order
+                    
+                    
+                else:
+                    matrix[i,-jmin+i:] = self.stencil[:jmin-i]
         jmax = np.max(self.j)
         if jmax > 0:
             for i in range(jmax):
-                matrix[-jmax+i,:i+1] = self.stencil[-i-1:]
+                if isinstance(grid, UniformNonPeriodicGrid):
+                    matrix[-i-1,:]=0 
+                    matrix[-i-1,-len(self.j):] = self.coffs(self.convergence_order,self.derivative_order,len(self.j)-1-i)/(self.dx)**self.derivative_order
+                else:
+                    matrix[-jmax+i,:i+1] = self.stencil[-i-1:]
         self.matrix = matrix
+        
+    
 
+    @staticmethod
+    def coffs(steps,dev,idx):
+        if dev%2 == 0:
+            steps = steps-1
+        value = steps+dev
+        k = np.zeros((value,value))
+        b = np.zeros((value,1))
+        b[dev,0]=1
+        rows,cols = np.shape(k)
+        for i in range(rows):
+            for j in range(cols):
+                k[i,j] = (j-idx)**(i)/np.math.factorial(i)
+
+        k[0,idx]=1
+        print(k)
+        x = np.linalg.solve(k,b)
+        x= x.transpose()
+        return x
 
 class DifferenceNonUniformGrid(Difference):
 
