@@ -308,14 +308,14 @@ class DiffusionBC:
             self.M = sparse.eye(N, N)
             self.L = -D*dy2.matrix
     
-        def step(self, dt):
-            self.t = self.t+dt
-            self.iter = self.iter+1
-        
-            self.ts_y.step(dt/2)
-            self.ts_x.step(dt/2)
-            self.ts_x.step(dt/2)
-            self.ts_y.step(dt/2)
+    def step(self, dt):
+        self.t = self.t+dt
+        self.iter = self.iter+1
+    
+        self.ts_y.step(dt/2)
+        self.ts_x.step(dt/2)
+        self.ts_x.step(dt/2)
+        self.ts_y.step(dt/2)
     
     
 class Wave2DBC:
