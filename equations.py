@@ -4,6 +4,7 @@ import finite
 import numpy as np
 import timesteppers
 import scipy.sparse.linalg as spla
+import timesteppers
 
 
 class ViscousBurgers:
@@ -255,3 +256,90 @@ class ViscousBurgers2D:
         self.ts_y.step(dt/2)
         self.ts_x.step(dt/2)
         self.ts_adv.step(dt/2)
+class DiffusionBC:
+
+    def __init__(self, c, D, spatial_order, domain):
+        self.c = c
+        self.X = timesteppers.StateVector([c])
+        self.t = 0
+        self.iter = 0
+       
+        x = domain.grids[0]
+        y= domain.grids[1]
+                
+        dx = finite.DifferenceUniformGrid(1, spatial_order, x)
+        dx2 = finite.DifferenceUniformGrid(2, spatial_order, x)
+        dy2 = finite.DifferenceUniformGrid(2, spatial_order, y)
+
+
+        diffx = self.Diffusionx(c,D, dx,dx2)
+        diffy = self.Diffusiony(c, D, dy2)
+        
+        self.ts_x = timesteppers.CrankNicolson(diffx, 0)
+        self.ts_y = timesteppers.CrankNicolson(diffy, 1)
+
+    class Diffusionx:
+
+        def __init__(self, c, D, dx,dx2):
+            self.X = timesteppers.StateVector([c], axis=0)
+            N = c.shape[0]
+            M = sparse.eye(N, N)
+            M=M.tocsr()
+            M[0,0]=0
+            M[-1,-1]=0
+            M.eliminate_zeros()
+            self.M = M
+
+            L = -D*dx2.matrix
+            L=L.tocsr()
+            L[0,:] = 0
+            L[-1,:] = 0
+            L[0,0] = 1
+            L[-1,:] = dx.matrix[-1,:]
+            L.eliminate_zeros()
+            self.L = L
+
+    
+    class Diffusiony:
+    
+        def __init__(self, c, D, dy2):
+            self.X = timesteppers.StateVector([c], axis=1)
+            N = c.shape[1]
+            self.M = sparse.eye(N, N)
+            self.L = -D*dy2.matrix
+    
+        def step(self, dt):
+            self.t = self.t+dt
+            self.iter = self.iter+1
+        
+            self.ts_y.step(dt/2)
+            self.ts_x.step(dt/2)
+            self.ts_x.step(dt/2)
+            self.ts_y.step(dt/2)
+    
+    
+class Wave2DBC:
+
+    def __init__(self, u, v, p, spatial_order, domain):
+        self.X = timesteppers.StateVector([u,v,p])
+        N = len(u)
+        x = domain.grids[0]
+        y= domain.grids[1]     
+    
+        self.dx = finite.DifferenceUniformGrid(1, spatial_order, x)
+        self.dy = finite.DifferenceUniformGrid(1, spatial_order, y,1)
+    
+        def BC(X):
+            X.data[0,:]=0
+            X.data[N-1,:]=0
+        self.BC = BC       
+        
+    
+        def f(X): 
+            v1 = -(self.dx @ X.data[2*N:,:])
+            v2 = -(self.dy @ X.data[2*N:,:])
+            v3 = -(self.dx @ X.data[0:N,:])-(self.dy @ X.data[N:2*N,:])
+            return np.vstack((v1,v2,v3))
+        self.F = f
+    
+    
