@@ -341,5 +341,93 @@ class Wave2DBC:
             v3 = -(self.dx @ X.data[0:N,:])-(self.dy @ X.data[N:2*N,:])
             return np.vstack((v1,v2,v3))
         self.F = f
+
+class ReactionDiffusionFI:
     
+    def __init__(self, c, D, spatial_order, grid):
+        self.X = timesteppers.StateVector([c])
+        d2 = finite.DifferenceUniformGrid(2, spatial_order, grid)
+        self.N = len(c)
+        I = sparse.eye(self.N)
+        
+        self.M = I
+        self.L = -D*d2.matrix
+
+        def F(X):
+            return X.data*(1-X.data)
+        self.F = F
+        
+        def J(X):
+            c_matrix = sparse.diags(X.data)
+            return sparse.eye(self.N) - 2*c_matrix
+        
+        self.J = J
+    
+class BurgersFI:
+    
+    def __init__(self, u, nu, spatial_order, grid):
+        self.X = timesteppers.StateVector([u])
+        d2 = finite.DifferenceUniformGrid(2, spatial_order, grid)
+        d1 = finite.DifferenceUniformGrid(1, spatial_order, grid)
+        self.N = len(u)
+        I = sparse.eye(self.N)
+        
+        self.M = I
+        self.L = -nu*d2.matrix
+
+        def F(X):
+            return -X.data*(d1 @ X.data)
+        self.F = F
+        
+        def J(X):
+            u_matrix = -sparse.diags(d1 @ X.data)
+            dev = -sparse.diags(X.data) @ (d1.matrix)
+            return u_matrix + dev
+        
+        self.J = J
+
+
+class ReactionTwoSpeciesDiffusion:
+    
+    def __init__(self, X, D, r, spatial_order, grid):
+        self.X = X
+
+        N = len(self.X.variables[0])
+        I = sparse.eye(N, N)
+        Z = sparse.csr_matrix((N, N))
+
+        M00 = I
+        M01 = Z
+        M10 = Z
+        M11 = I
+        self.M = sparse.bmat([[M00, M01],
+                                [M10, M11]])
+
+        d2 = finite.DifferenceUniformGrid(2, spatial_order, grid)
+        L00 = -D*d2.matrix
+        L01 = Z
+        L10 = Z
+        L11 = -D*d2.matrix
+        self.L = sparse.bmat([[L00, L01],
+                                [L10, L11]])
+        
+        def F(X):
+            c1 = self.X.data[0:N]
+            c2 = self.X.data[N:]
+            return np.append([c1*(1-c1-c2)],[r*c2*(c1-c2)])
+        self.F = F
+
+
+        def J(X):
+            c1 = sparse.diags(self.X.data[0:N])
+            c2 = sparse.diags(self.X.data[N:])
+            m1 = sparse.eye(N)-2*c1-c2
+            m2 = -c1
+            m3 = r*c2
+            m4 = r*c1-2*c2*r
+            mat = sparse.bmat([[m1, m2],
+                                [m3, m4]])
+            return mat
+        
+        self.J = J
     
